@@ -2936,6 +2936,18 @@
             if (edit.style   == null) edit.style   = '';
             if (edit.items   == null) edit.items   = [];
             var val = (rec.w2ui && rec.w2ui.changes && rec.w2ui.changes[col.field] != null ? w2utils.stripTags(rec.w2ui.changes[col.field]) : w2utils.stripTags(rec[col.field]));
+            //complex data hierarchy e.g. xxx.yyy.ttt
+            if (val == null && col.field.lastIndexOf(".") >= 1) {
+                var fieldsArr = col.field.split(".");
+                var val = null;
+                for (var i = 0; i < fieldsArr.length; i++) {
+                    if (val == null) {
+                        val = rec[fieldsArr[i]];
+                    } else {
+                        val = val[fieldsArr[i]];
+                    }
+                }
+            }
             if (val == null) val = '';
             var old_value = (typeof val != 'object' ? val : '');
             if (edata.old_value != null) old_value = edata.old_value;
