@@ -326,6 +326,7 @@
             toolbarSearch   : true,
             toolbarInput    : true,
             toolbarAdd      : false,
+            toolbarApprove  : false,
             toolbarEdit     : false,
             toolbarDelete   : false,
             toolbarSave     : false,
@@ -442,7 +443,8 @@
             'add'      : { type: 'button', id: 'w2ui-add', text: 'Add New', tooltip: 'Add new record', icon: 'w2ui-icon-plus' },
             'edit'     : { type: 'button', id: 'w2ui-edit', text: 'Edit', tooltip: 'Edit selected record', icon: 'w2ui-icon-pencil', disabled: true },
             'delete'   : { type: 'button', id: 'w2ui-delete', text: 'Delete', tooltip: 'Delete selected records', icon: 'w2ui-icon-cross', disabled: true },
-            'save'     : { type: 'button', id: 'w2ui-save', text: 'Save', tooltip: 'Save changed records', icon: 'w2ui-icon-check' }
+            'save'     : { type: 'button', id: 'w2ui-save', text: 'Save', tooltip: 'Save changed records', icon: 'w2ui-icon-check' },
+            'approve'  : { type: 'button', id: 'w2ui-approve', text: 'Approve', tooltip: 'Approve selected records', icon: 'w2ui-icon-check' }
         },
 
         operators: { // for search fields
@@ -490,6 +492,7 @@
         onLoad             : null,
         onDelete           : null,
         onSave             : null,
+        onApprove          : null,
         onSelect           : null,
         onUnselect         : null,
         onClick            : null,
@@ -3285,7 +3288,22 @@
             $(this.box).find('div.w2ui-edit-box').remove();
             // enable/disable toolbar search button
             if (this.show.toolbarSave) {
-                if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
+                if (this.getChanges().length > 0) {
+                    this.toolbar.enable('w2ui-save');
+                    //this.toolbar.enable('w2ui-approve'); 
+                }else{
+                    this.toolbar.disable('w2ui-save');
+                    //this.toolbar.disable('w2ui-approve');
+                }
+            }
+            if (this.show.toolbarApprove) {
+                if (this.getChanges().length > 0) {
+                    //this.toolbar.enable('w2ui-save');
+                    this.toolbar.enable('w2ui-approve'); 
+                }else{
+                    //this.toolbar.disable('w2ui-save');
+                    this.toolbar.disable('w2ui-approve');
+                }
             }
             obj.last.inEditMode = false;
         },
@@ -4286,6 +4304,18 @@
             }
         },
 
+        collapseAll: function(){
+            var obj  = this;
+            // collapse all records
+            var rows = obj.find({ 'w2ui.expanded': true }, true);
+            for (var r = 0; r < rows.length; r++) {
+                var tmp = obj.records[rows[r]].w2ui;
+                if (tmp && !Array.isArray(tmp.children)) {
+                    tmp.expanded = false;
+                }
+            }
+        },
+
         sort: function (field, direction, multiField) { // if no params - clears sort
             // event before
             var edata = this.trigger({ phase: 'before', type: 'sort', target: this.name, field: field, direction: direction, multiField: multiField });
@@ -4742,6 +4772,11 @@
             if (this.show.toolbarSave) {
                 if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
             }
+            // enable/disable toolbar search button
+            if (this.show.toolbarApprove) {
+                if (this.getChanges().length > 0) this.toolbar.enable('w2ui-approve'); else this.toolbar.disable('w2ui-approve');
+            }
+
             // event after
             this.trigger($.extend(edata, { phase: 'after' }));
             obj.resize();
@@ -5808,7 +5843,7 @@
                     this.toolbar.items.push($.extend(true, {}, this.buttons['search-go']));
                 }
                 if ((this.show.toolbarSearch || this.show.toolbarInput)
-                        && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave)) {
+                        && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave || this.show.toolbarApprove)) {
                     this.toolbar.items.push({ type: 'break', id: 'w2ui-break1' });
                 }
                 if (this.show.toolbarAdd && Array.isArray(tmp_items)
@@ -5829,6 +5864,13 @@
                         this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
                     }
                     this.toolbar.items.push($.extend(true, {}, this.buttons['save']));
+                }
+                if (this.show.toolbarApprove && Array.isArray(tmp_items)
+                        && tmp_items.map(function (item) { return item.id }).indexOf(this.buttons['approve'].id) == -1) {
+                    if (this.show.toolbarAdd || this.show.toolbarDelete || this.show.toolbarEdit || this.show.toolbarSave) {
+                        this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
+                    }
+                    this.toolbar.items.push($.extend(true, {}, this.buttons['approve']));
                 }
                 // add original buttons
                 if (tmp_items) for (var i = 0; i < tmp_items.length; i++) this.toolbar.items.push(tmp_items[i]);
@@ -5888,6 +5930,9 @@
                             break;
                         case 'w2ui-save':
                             obj.save();
+                            break;
+                        case 'w2ui-approve':
+                            obj.save();//TODO
                             break;
                     }
                     // no default action
