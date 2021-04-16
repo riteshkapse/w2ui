@@ -2867,6 +2867,36 @@
             }
         },
 
+        approve: function (callBack) {
+            var obj = this;
+            var changes = this.getChanges();
+            var url = (typeof this.url != 'object' ? this.url : this.url.save);
+            // event before
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'approve', changes: changes });
+            if (edata.isCancelled === true) {
+                if (url && typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
+                return;
+            }
+            if (url) {
+                this.request('save', { 'changes' : edata.changes }, null,
+                    function (data) {
+                        if (data.status !== 'error') {
+                            // only merge changes, if save was successful
+                            obj.mergeChanges();
+                        }
+                        // event after
+                        obj.trigger($.extend(edata, { phase: 'after' }));
+                        // call back
+                        if (typeof callBack == 'function') callBack(data);
+                    }
+                );
+            } else {
+                this.mergeChanges();
+                // event after
+                this.trigger($.extend(edata, { phase: 'after' }));
+            }
+        },
+
         editField: function (recid, column, value, event) {
             var obj = this;
             if (this.last.inEditMode === true) { // already editing
@@ -5932,7 +5962,7 @@
                             obj.save();
                             break;
                         case 'w2ui-approve':
-                            obj.save();//TODO
+                            obj.approve();//TODO
                             break;
                     }
                     // no default action
