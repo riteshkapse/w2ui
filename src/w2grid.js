@@ -2805,7 +2805,14 @@
 
                     // recursively look for changes in non-expanded children
                     if (rec.w2ui.expanded !== true && rec.w2ui.children && rec.w2ui.children.length) {
-                        $.merge(changes, this.getChanges(rec.w2ui.children))
+                        
+                        //track parent
+                        var changeArr = this.getChanges(rec.w2ui.children);
+                        changeArr.forEach(function (crec, cind) {
+                            crec['pRecId'] = rec.recid;
+                        });
+                        
+                        $.merge(changes, changeArr)
                     }
                 }
             }
@@ -2815,7 +2822,20 @@
         mergeChanges: function () {
             var changes = this.getChanges();
             for (var c = 0; c < changes.length; c++) {
-                var record = this.get(changes[c].recid);
+
+                var record = null;
+                //if having parent, get child record - might not work with more than 1 level
+                if(changes[c].pRecId){
+                    this.get(changes[c].pRecId).w2ui.children.forEach(function(crec,cind){
+                        if(crec.recid == changes[c].recid){
+                            record = crec;                            
+                        }
+                    });
+                }else{
+                    record = this.get(changes[c].recid);
+                }
+
+                
                 for (var s in changes[c]) {
                     if (s == 'recid') continue; // do not allow to change recid
                     if (typeof changes[c][s] === "object") changes[c][s] = changes[c][s].text;
