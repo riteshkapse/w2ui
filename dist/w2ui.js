@@ -1677,7 +1677,6 @@ var w2utils = (function ($) {
 
     function testLocalStorage() {
         // test if localStorage is available, see issue #1282
-        // original code: https://github.com/Modernizr/Modernizr/blob/master/feature-detects/storage/localstorage.js
         var str = 'w2ui_test';
         try {
           localStorage.setItem(str, str);
@@ -1809,12 +1808,7 @@ var w2utils = (function ($) {
         return actions
     }
 
-    /*! from litejs.com / MIT Licence
-        https://github.com/litejs/natural-compare-lite/blob/master/index.js */
     /*
-     * @version    1.4.0
-     * @date       2015-10-26
-     * @stability  3 - Stable
      * @author     Lauri Rooden (https://github.com/litejs/natural-compare-lite)
      * @license    MIT License
      */
@@ -3544,6 +3538,8 @@ w2utils.event = {
 *   - reusable search component (see https://github.com/vitmalina/w2ui/issues/914#issuecomment-107340524)
 *   - allow enum in inline edit (see https://github.com/vitmalina/w2ui/issues/911#issuecomment-107341193)
 *   - if record has no recid, then it should be index in the aray (should not be 0)
+*   - remote source, but localSort/localSearch
+*   - gridMinWidth - should show/hide columns, when it is triggered, column can not be turned on at all
 *
 * == KNOWN ISSUES ==
 *   - bug: vs_start = 100 and more then 500 records, when scrolling empty sets
@@ -3678,6 +3674,7 @@ w2utils.event = {
 *   - menuClick - changed parameters
 *   - column.text can be a function
 *   - columnGroup.text can be a function
+*   - grid.tabIndex
 *
 ************************************************************************/
 
@@ -3688,7 +3685,7 @@ w2utils.event = {
         this.name         = null;
         this.box          = null;     // HTML element that hold this element
         this.columns      = [];       // { field, text, size, attr, render, hidden, gridMinWidth, editable }
-        this.columnGroups = [];       // { span: int, text: 'string', master: true/false }
+        this.columnGroups = [];       // { span: int, text: 'string', main: true/false }
         this.records      = [];       // { recid: int(requied), field1: 'value1', ... fieldN: 'valueN', style: 'string',  changes: object }
         this.summary      = [];       // arry of summary records, same structure as records array
         this.searches     = [];       // { type, label, field, inTag, outTag, hidden }
@@ -3842,6 +3839,7 @@ w2utils.event = {
             toolbarSearch   : true,
             toolbarInput    : true,
             toolbarAdd      : false,
+            toolbarApprove  : false,
             toolbarEdit     : false,
             toolbarDelete   : false,
             toolbarSave     : false,
@@ -3958,7 +3956,8 @@ w2utils.event = {
             'add'      : { type: 'button', id: 'w2ui-add', text: 'Add New', tooltip: 'Add new record', icon: 'w2ui-icon-plus' },
             'edit'     : { type: 'button', id: 'w2ui-edit', text: 'Edit', tooltip: 'Edit selected record', icon: 'w2ui-icon-pencil', disabled: true },
             'delete'   : { type: 'button', id: 'w2ui-delete', text: 'Delete', tooltip: 'Delete selected records', icon: 'w2ui-icon-cross', disabled: true },
-            'save'     : { type: 'button', id: 'w2ui-save', text: 'Save', tooltip: 'Save changed records', icon: 'w2ui-icon-check' }
+            'save'     : { type: 'button', id: 'w2ui-save', text: 'Save', tooltip: 'Save changed records', icon: 'w2ui-icon-check' },
+            'approve'  : { type: 'button', id: 'w2ui-approve', text: 'Approve', tooltip: 'Approve selected records', icon: 'w2ui-icon-check' }
         },
 
         operators: { // for search fields
@@ -4006,6 +4005,7 @@ w2utils.event = {
         onLoad             : null,
         onDelete           : null,
         onSave             : null,
+        onApprove          : null,
         onSelect           : null,
         onUnselect         : null,
         onClick            : null,
@@ -4989,8 +4989,15 @@ w2utils.event = {
                         $range.find('.w2ui-selection-resizer').hide();
                     }
                     if (first.recid != null && last.recid != null && td1f.length > 0 && td2f.length > 0) {
-                        var _left = (td1f.position().left - 0 + rec1.scrollLeft());
-                        var _top  = (td1f.position().top - 0 + rec1.scrollTop());
+                        var sLeft = 0; // frozen columns do not need left offset
+                        var sTop  = rec2.scrollTop();
+                        // work arround jQuery inconsistensy between vers >3.2 and <=3.3
+                        if (td1f.find('>div').position().top < 8) {
+                            sLeft = 0;
+                            sTop  = 0;
+                        }
+                        var _left = (td1f.position().left - 0 + sLeft);
+                        var _top  = (td1f.position().top - 0 + sTop);
                         $range.show().css({
                             left    : (_left > 0 ? _left : 0) + 'px',
                             top     : (_top > 0 ? _top : 0) + 'px',
@@ -5022,8 +5029,16 @@ w2utils.event = {
                         $range.css('border-left', '0px');
                     }
                     if (first.recid != null && last.recid != null && td1.length > 0 && td2.length > 0) {
-                        var _left = (td1.position().left - 0 + rec2.scrollLeft());
-                        var _top  = (td1.position().top - 0 + rec2.scrollTop());
+                        var sLeft = rec2.scrollLeft();
+                        var sTop  = rec2.scrollTop();
+                        // work arround jQuery inconsistensy between vers >3.2 and <=3.3
+                        if (td2.find('>div').position().top < 8) {
+                            sLeft = 0;
+                            sTop  = 0;
+                        }
+                        var _left = (td1.position().left - 0 + sLeft);
+                        var _top  = (td1.position().top - 0 + sTop);
+                        // console.log('top', td1.position().top, rec2.scrollTop(), td1.find('>div').position().top)
                         $range.show().css({
                             left    : (_left > 0 ? _left : 0) + 'px',
                             top     : (_top > 0 ? _top : 0) + 'px',
@@ -6303,7 +6318,14 @@ w2utils.event = {
 
                     // recursively look for changes in non-expanded children
                     if (rec.w2ui.expanded !== true && rec.w2ui.children && rec.w2ui.children.length) {
-                        $.merge(changes, this.getChanges(rec.w2ui.children))
+                        
+                        //track parent
+                        var changeArr = this.getChanges(rec.w2ui.children);
+                        changeArr.forEach(function (crec, cind) {
+                            crec['pRecId'] = rec.recid;
+                        });
+                        
+                        $.merge(changes, changeArr)
                     }
                 }
             }
@@ -6313,7 +6335,20 @@ w2utils.event = {
         mergeChanges: function () {
             var changes = this.getChanges();
             for (var c = 0; c < changes.length; c++) {
-                var record = this.get(changes[c].recid);
+
+                var record = null;
+                //if having parent, get child record - might not work with more than 1 level
+                if(changes[c].pRecId){
+                    this.get(changes[c].pRecId).w2ui.children.forEach(function(crec,cind){
+                        if(crec.recid == changes[c].recid){
+                            record = crec;                            
+                        }
+                    });
+                }else{
+                    record = this.get(changes[c].recid);
+                }
+
+                
                 for (var s in changes[c]) {
                     if (s == 'recid') continue; // do not allow to change recid
                     if (typeof changes[c][s] === "object") changes[c][s] = changes[c][s].text;
@@ -6332,6 +6367,31 @@ w2utils.event = {
             this.refresh();
         },
 
+        //For Tree
+        getActualRecords: function () {
+            var actualRecords = [];
+            this.records.forEach(function(rec, ind){
+                if(rec.w2ui && rec.w2ui.parent_recid){
+                    return;
+                }
+                actualRecords.push(rec);
+            });
+            return actualRecords;
+        },
+
+        collapseAll: function () {
+            var that = this;
+            var expandedIds = [];
+            this.records.forEach(function(rec, ind){
+                if(rec.w2ui && rec.w2ui.parent_recid){
+                    expandedIds.push(rec.w2ui.parent_recid);
+                }                
+            });            
+            expandedIds.forEach(function(recid, ind){
+                that.collapse(recid);
+            });
+        },
+
         // ===================================================
         // --  Action Handlers
 
@@ -6341,6 +6401,36 @@ w2utils.event = {
             var url = (typeof this.url != 'object' ? this.url : this.url.save);
             // event before
             var edata = this.trigger({ phase: 'before', target: this.name, type: 'save', changes: changes });
+            if (edata.isCancelled === true) {
+                if (url && typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
+                return;
+            }
+            if (url) {
+                this.request('save', { 'changes' : edata.changes }, null,
+                    function (data) {
+                        if (data.status !== 'error') {
+                            // only merge changes, if save was successful
+                            obj.mergeChanges();
+                        }
+                        // event after
+                        obj.trigger($.extend(edata, { phase: 'after' }));
+                        // call back
+                        if (typeof callBack == 'function') callBack(data);
+                    }
+                );
+            } else {
+                this.mergeChanges();
+                // event after
+                this.trigger($.extend(edata, { phase: 'after' }));
+            }
+        },
+
+        approve: function (callBack) {
+            var obj = this;
+            var changes = this.getChanges();
+            var url = (typeof this.url != 'object' ? this.url : this.url.save);
+            // event before
+            var edata = this.trigger({ phase: 'before', target: this.name, type: 'approve', changes: changes });
             if (edata.isCancelled === true) {
                 if (url && typeof callBack == 'function') callBack({ status: 'error', message: 'Request aborted.' });
                 return;
@@ -6437,6 +6527,18 @@ w2utils.event = {
             if (edit.style   == null) edit.style   = '';
             if (edit.items   == null) edit.items   = [];
             var val = (rec.w2ui && rec.w2ui.changes && rec.w2ui.changes[col.field] != null ? w2utils.stripTags(rec.w2ui.changes[col.field]) : w2utils.stripTags(rec[col.field]));
+            //complex data hierarchy e.g. xxx.yyy.ttt
+            if (val == null && col.field.lastIndexOf(".") >= 1) {
+                var fieldsArr = col.field.split(".");
+                var val = null;
+                for (var i = 0; i < fieldsArr.length; i++) {
+                    if (val == null) {
+                        val = rec[fieldsArr[i]];
+                    } else {
+                        val = val[fieldsArr[i]];
+                    }
+                }
+            }
             if (val == null) val = '';
             var old_value = (typeof val != 'object' ? val : '');
             if (edata.old_value != null) old_value = edata.old_value;
@@ -6774,7 +6876,22 @@ w2utils.event = {
             $(this.box).find('div.w2ui-edit-box').remove();
             // enable/disable toolbar search button
             if (this.show.toolbarSave) {
-                if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
+                if (this.getChanges().length > 0) {
+                    this.toolbar.enable('w2ui-save');
+                    //this.toolbar.enable('w2ui-approve'); 
+                }else{
+                    this.toolbar.disable('w2ui-save');
+                    //this.toolbar.disable('w2ui-approve');
+                }
+            }
+            if (this.show.toolbarApprove) {
+                if (this.getChanges().length > 0) {
+                    //this.toolbar.enable('w2ui-save');
+                    this.toolbar.enable('w2ui-approve'); 
+                }else{
+                    //this.toolbar.disable('w2ui-save');
+                    this.toolbar.disable('w2ui-approve');
+                }
             }
             obj.last.inEditMode = false;
         },
@@ -8231,6 +8348,11 @@ w2utils.event = {
             if (this.show.toolbarSave) {
                 if (this.getChanges().length > 0) this.toolbar.enable('w2ui-save'); else this.toolbar.disable('w2ui-save');
             }
+            // enable/disable toolbar search button
+            if (this.show.toolbarApprove) {
+                if (this.getChanges().length > 0) this.toolbar.enable('w2ui-approve'); else this.toolbar.disable('w2ui-approve');
+            }
+
             // event after
             this.trigger($.extend(edata, { phase: 'after' }));
             obj.resize();
@@ -8404,6 +8526,7 @@ w2utils.event = {
                       '    <div id="grid_'+ this.name +'_summary" class="w2ui-grid-body w2ui-grid-summary"></div>'+
                       '    <div id="grid_'+ this.name +'_footer" class="w2ui-grid-footer"></div>'+
                       '    <textarea id="grid_'+ this.name +'_focus" class="w2ui-grid-focus-input" '+
+                                (this.tabIndex ? 'tabindex="' + this.tabIndex + '"' : '')+
                                 (w2utils.isIOS ? 'readonly' : '') +'></textarea>'+ // readonly needed on android not to open keyboard
                       '</div>');
             if (this.selectType != 'row') $(this.box).addClass('w2ui-ss');
@@ -9296,7 +9419,7 @@ w2utils.event = {
                     this.toolbar.items.push($.extend(true, {}, this.buttons['search-go']));
                 }
                 if ((this.show.toolbarSearch || this.show.toolbarInput)
-                        && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave)) {
+                        && (this.show.toolbarAdd || this.show.toolbarEdit || this.show.toolbarDelete || this.show.toolbarSave || this.show.toolbarApprove)) {
                     this.toolbar.items.push({ type: 'break', id: 'w2ui-break1' });
                 }
                 if (this.show.toolbarAdd && Array.isArray(tmp_items)
@@ -9317,6 +9440,13 @@ w2utils.event = {
                         this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
                     }
                     this.toolbar.items.push($.extend(true, {}, this.buttons['save']));
+                }
+                if (this.show.toolbarApprove && Array.isArray(tmp_items)
+                        && tmp_items.map(function (item) { return item.id }).indexOf(this.buttons['approve'].id) == -1) {
+                    if (this.show.toolbarAdd || this.show.toolbarDelete || this.show.toolbarEdit || this.show.toolbarSave) {
+                        this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
+                    }
+                    this.toolbar.items.push($.extend(true, {}, this.buttons['approve']));
                 }
                 // add original buttons
                 if (tmp_items) for (var i = 0; i < tmp_items.length; i++) this.toolbar.items.push(tmp_items[i]);
@@ -9376,6 +9506,9 @@ w2utils.event = {
                             break;
                         case 'w2ui-save':
                             obj.save();
+                            break;
+                        case 'w2ui-approve':
+                            obj.approve();//TODO
                             break;
                     }
                     // no default action
@@ -10211,7 +10344,7 @@ w2utils.event = {
                     }
                     if (colspan <= 0) {
                         // do nothing here, all columns in the group are hidden.
-                    } else if (colg.master === true) {
+                    } else if (colg.main === true) {
                         var sortStyle = '';
                         for (var si = 0; si < obj.sortData.length; si++) {
                             if (obj.sortData[si].field == col.field) {
@@ -10253,7 +10386,7 @@ w2utils.event = {
                 return [html1, html2];
             }
 
-            function getColumns (master) {
+            function getColumns (main) {
                 var html1 = '<tr>';
                 var html2 = '<tr>';
                 if (obj.show.lineNumbers) {
@@ -10307,7 +10440,7 @@ w2utils.event = {
                         continue;
                     if (col.hidden)
                         continue;
-                    if (colg.master !== true || master) { // grouping of columns
+                    if (colg.main !== true || main) { // grouping of columns
                         var colCellHTML = obj.getColumnCellHTML(i);
                         if (col && col.frozen) html1 += colCellHTML; else html2 += colCellHTML;
                     }
@@ -19591,9 +19724,7 @@ var w2prompt = function (label, title, callBack) {
 *   - include delta on save
 *   - form should read <select> <options> into items
 *   - two way data bindings
-*   - verify validation of fields
-*   - nested record object
-*   - formHTML --> template
+*   - nested groups (so fields can be deifned inside)
 *
 * == 1.5 changes
 *   - $('#form').w2form() - if called w/o argument then it returns form object
@@ -19625,14 +19756,15 @@ var w2prompt = function (label, title, callBack) {
 *   - added form.pageStyle
 *   - added html.span -1 - then label is displayed on top
 *   - added field.options.minLength, min/max for numebrs can be done with int/float - min/max
-*   - field.html.groupCollapsable, form.toggleGroup
+*   - field.html.groupCollapsible, form.toggleGroup
 *   - added showErrors
 *   - added field.type = 'check'
 *   - new field type 'map', 'array' - same thing but map has unique keys also html: { key: { text: '111', attr: '222' }, value: {...}}
 *   - updateEmptyGroups
+*   - tabs below some fields
+*   - tabindexBase
 *
 ************************************************************************/
-
 
 (function ($) {
     var w2form = function(options) {
@@ -20572,7 +20704,7 @@ var w2prompt = function (label, title, callBack) {
                         for (var i = 0; i < items.length; i++) {
                             input += '<label class="w2ui-box-label">'+
                                      '  <input id="' + field.field + i +'" name="' + field.field + '" class="w2ui-input" type="checkbox" ' +
-                                                field.html.attr + (i === 0 ? tabindex_str : '') + ' data-value="'+ items[i].id +'" data-index="'+ i +'">' +
+                                                field.html.attr + tabindex_str + ' data-value="'+ items[i].id +'" data-index="'+ i +'">' +
                                         '<span>&#160;' + items[i].text + '</span>' +
                                      '</label><br>';
                         }
@@ -20632,13 +20764,13 @@ var w2prompt = function (label, title, callBack) {
                                 '<input id="'+ field.field +'" name="'+ field.field +'" type="hidden" '+ field.html.attr + tabindex_str + '>'+
                                 '<div class="w2ui-map-container"></div>';
                         break;
-                    case 'html':
                     case 'div':
                     case 'custom':
-                        input = '<div id="'+ field.field +'" name="'+ field.field +'" '+ field.html.attr + tabindex_str + '>'+
+                        input = '<div id="'+ field.field +'" name="'+ field.field +'" '+ field.html.attr + tabindex_str + ' class="w2ui-input">'+
                                     (field && field.html && field.html.html ? field.html.html : '') +
                                 '</div>';
                         break;
+                    case 'html':
                     case 'empty':
                         input = (field && field.html ? (field.html.html || '') + (field.html.text || '') : '');
                         break;
@@ -20651,19 +20783,19 @@ var w2prompt = function (label, title, callBack) {
                     }
                 }
                 if (field.html.group && (group != field.html.group)) {
-                    var collapsable = '';
-                    if (field.html.groupCollapsable) {
-                        collapsable = '<span class="w2ui-icon-collapse" style="width: 15px; display: inline-block; position: relative; top: -2px;"></span>'
+                    var collapsible = '';
+                    if (field.html.groupCollapsible) {
+                        collapsible = '<span class="w2ui-icon-collapse" style="width: 15px; display: inline-block; position: relative; top: -2px;"></span>'
                     }
                     html += '\n <div class="w2ui-group">'
                         + '\n   <div class="w2ui-group-title" style="'+ (field.html.groupTitleStyle || '')
-                                        + (collapsable != '' ? 'cursor: pointer; user-select: none' : '') + '"'
-                        + (collapsable != '' ? 'data-group="' + w2utils.base64encode(field.html.group) + '"' : '')
-                        + (collapsable != ''
+                                        + (collapsible != '' ? 'cursor: pointer; user-select: none' : '') + '"'
+                        + (collapsible != '' ? 'data-group="' + w2utils.base64encode(field.html.group) + '"' : '')
+                        + (collapsible != ''
                             ? 'onclick="w2ui[\'' + this.name + '\'].toggleGroup(\'' + field.html.group + '\')"'
                             : '')
                         + '>'
-                        + collapsable + field.html.group + '</div>\n'
+                        + collapsible + field.html.group + '</div>\n'
                         + '   <div class="w2ui-group-fields" style="'+ (field.html.groupStyle || '') +'">';
                     group = field.html.group;
                 }

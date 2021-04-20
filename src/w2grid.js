@@ -2854,6 +2854,31 @@
             this.refresh();
         },
 
+        //For Tree
+        getActualRecords: function () {
+            var actualRecords = [];
+            this.records.forEach(function(rec, ind){
+                if(rec.w2ui && rec.w2ui.parent_recid){
+                    return;
+                }
+                actualRecords.push(rec);
+            });
+            return actualRecords;
+        },
+
+        collapseAll: function () {
+            var that = this;
+            var expandedIds = [];
+            this.records.forEach(function(rec, ind){
+                if(rec.w2ui && rec.w2ui.parent_recid){
+                    expandedIds.push(rec.w2ui.parent_recid);
+                }                
+            });            
+            expandedIds.forEach(function(recid, ind){
+                that.collapse(recid);
+            });
+        },
+
         // ===================================================
         // --  Action Handlers
 
@@ -4350,18 +4375,6 @@
                     if (subRec.w2ui.expanded) {
                         clearExpanded(subRec);
                     }
-                }
-            }
-        },
-
-        collapseAll: function(){
-            var obj  = this;
-            // collapse all records
-            var rows = obj.find({ 'w2ui.expanded': true }, true);
-            for (var r = 0; r < rows.length; r++) {
-                var tmp = obj.records[rows[r]].w2ui;
-                if (tmp && !Array.isArray(tmp.children)) {
-                    tmp.expanded = false;
                 }
             }
         },
