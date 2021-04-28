@@ -2841,7 +2841,7 @@
                     if (typeof changes[c][s] === "object") changes[c][s] = changes[c][s].text;
                     try {
                         if (s.indexOf('.') != -1) {
-                            eval("record['" + s.replace(/\./g, "']['") + "'] = changes[c][s]")
+                            w2utils.setValueByString(record,s,changes[c][s]);
                         } else {
                             record[s] = changes[c][s];
                         }
@@ -3012,20 +3012,14 @@
             if (edit.inTag   == null) edit.inTag   = '';
             if (edit.outTag  == null) edit.outTag  = '';
             if (edit.style   == null) edit.style   = '';
-            if (edit.items   == null) edit.items   = [];
-            var val = (rec.w2ui && rec.w2ui.changes && rec.w2ui.changes[col.field] != null ? w2utils.stripTags(rec.w2ui.changes[col.field]) : w2utils.stripTags(rec[col.field]));
-            //complex data hierarchy e.g. xxx.yyy.ttt
-            if (val == null && col.field.lastIndexOf(".") >= 1) {
-                var fieldsArr = col.field.split(".");
-                var val = null;
-                for (var i = 0; i < fieldsArr.length; i++) {
-                    if (val == null) {
-                        val = rec[fieldsArr[i]];
-                    } else {
-                        val = val[fieldsArr[i]];
-                    }
-                }
-            }
+            if (edit.items   == null) edit.items   = [];            
+            var val = null;
+            if(rec.w2ui && rec.w2ui.changes && rec.w2ui.changes[col.field] != null){
+                val = w2utils.stripTags(rec.w2ui.changes[col.field]);
+            }else{
+                var rawVal = w2utils.getValueByString(rec,col.field);
+                val = w2utils.stripTags(rawVal);
+            }            
             if (val == null) val = '';
             var old_value = (typeof val != 'object' ? val : '');
             if (edata.old_value != null) old_value = edata.old_value;
@@ -8054,12 +8048,8 @@
         parseField: function (obj, field) {
             if (this.nestedFields) {
                 var val = '';
-                try { // need this to make sure no error in fields
-                    val = obj;
-                    var tmp = String(field).split('.');
-                    for (var i = 0; i < tmp.length; i++) {
-                        val = val[tmp[i]];
-                    }
+                try { 
+                    val = w2utils.getValueByString(obj, field);
                 } catch (event) {
                     val = '';
                 }

@@ -94,6 +94,8 @@ var w2utils = (function ($) {
         formatDate      : formatDate,
         formatTime      : formatTime,
         formatDateTime  : formatDateTime,
+        getValueByString: getValueByString,
+        setValueByString: setValueByString,
         stripTags       : stripTags,
         encodeTags      : encodeTags,
         decodeTags      : decodeTags,
@@ -521,6 +523,39 @@ var w2utils = (function ($) {
         if (fmt[1] === 'h12') fmt[1] = 'h:m pm';
         if (fmt[1] === 'h24') fmt[1] = 'h24:m';
         return this.formatDate(dateStr, fmt[0]) + ' ' + this.formatTime(dateStr, fmt[1]);
+    }
+
+    function getValueByString(o, s) {
+        s = s.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
+        s = s.replace(/^\./, '');           // strip a leading dot
+        var a = s.split('.');
+        for (var i = 0, n = a.length; i < n; ++i) {
+            var k = a[i];
+            if (k in o) {
+                o = o[k];
+            } else {
+                return;
+            }
+        }
+        return o;
+    }
+
+    function setValueByString(o, s, d) {
+        s = s.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
+        s = s.replace(/^\./, '');           // strip a leading dot
+        var a = s.split('.');
+        for (var i = 0, n = a.length; i < n; ++i) {
+            var k = a[i];
+            if (k in o) {
+                if(i == n-1){//update
+                    o[k] = d;
+                }
+                o = o[k];//new value                
+            } else {
+                return;
+            }
+        }
+        return o;
     }
 
     function stripTags (html) {
