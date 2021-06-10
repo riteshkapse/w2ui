@@ -546,14 +546,10 @@ var w2utils = (function ($) {
         var a = s.split('.');
         for (var i = 0, n = a.length; i < n; ++i) {
             var k = a[i];
-            if (k in o) {
-                if(i == n-1){//update
-                    o[k] = d;
-                }
-                o = o[k];//new value                
-            } else {
-                return;
+            if (i == n - 1) {//update
+                o[k] = d;
             }
+            o = o[k];//new value                            
         }
         return o;
     }
