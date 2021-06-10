@@ -326,10 +326,12 @@
             toolbarSearch   : true,
             toolbarInput    : true,
             toolbarAdd      : false,
-            toolbarApprove  : false,
             toolbarEdit     : false,
             toolbarDelete   : false,
             toolbarSave     : false,
+            toolbarSaveIcon : null,
+            toolbarApprove  : false,
+            toolbarApproveIcon  : null,
             searchAll       : true,
             searchHiddenMsg : false,
             statusRange     : true,
@@ -2868,14 +2870,27 @@
 
         collapseAll: function () {
             var that = this;
-            var expandedIds = [];
+            var expandableIds = [];
             this.records.forEach(function(rec, ind){
-                if(rec.w2ui && rec.w2ui.parent_recid){
-                    expandedIds.push(rec.w2ui.parent_recid);
+                if(rec.w2ui && rec.w2ui.children && rec.w2ui.children.length>0){
+                    expandableIds.push(rec.recid);
                 }                
             });            
-            expandedIds.forEach(function(recid, ind){
+            expandableIds.forEach(function(recid, ind){
                 that.collapse(recid);
+            });
+        },
+
+        expandAll: function () {
+            var that = this;
+            var expandableIds = [];
+            this.records.forEach(function(rec, ind){
+                if(rec.w2ui && rec.w2ui.children && rec.w2ui.children.length>0){
+                    expandableIds.push(rec.recid);
+                }                
+            });            
+            expandableIds.forEach(function(recid, ind){
+                that.expand(recid);
             });
         },
 
@@ -5920,14 +5935,22 @@
                     if (this.show.toolbarAdd || this.show.toolbarDelete || this.show.toolbarEdit) {
                         this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
                     }
-                    this.toolbar.items.push($.extend(true, {}, this.buttons['save']));
+                    if(this.show.toolbarSaveIcon){
+                        this.toolbar.items.push($.extend(true, this.buttons['save'], { icon:this.show.toolbarSaveIcon }));
+                    }else{
+                        this.toolbar.items.push($.extend(true, {}, this.buttons['save']));
+                    }
                 }
                 if (this.show.toolbarApprove && Array.isArray(tmp_items)
                         && tmp_items.map(function (item) { return item.id }).indexOf(this.buttons['approve'].id) == -1) {
                     if (this.show.toolbarAdd || this.show.toolbarDelete || this.show.toolbarEdit || this.show.toolbarSave) {
                         this.toolbar.items.push({ type: 'break', id: 'w2ui-break2' });
                     }
-                    this.toolbar.items.push($.extend(true, {}, this.buttons['approve']));
+                    if(this.show.toolbarApproveIcon){
+                        this.toolbar.items.push($.extend(true, this.buttons['approve'], { icon: this.show.toolbarApproveIcon }));
+                    }else{
+                        this.toolbar.items.push($.extend(true, {}, this.buttons['approve']));
+                    }                    
                 }
                 // add original buttons
                 if (tmp_items) for (var i = 0; i < tmp_items.length; i++) this.toolbar.items.push(tmp_items[i]);
