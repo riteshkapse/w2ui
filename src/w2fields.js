@@ -842,9 +842,19 @@
                 }
                 if (parseFloat(val) == val) {
                     if (options.min != null && val < options.min) { val = options.min; $(this.el).val(options.min); }
-                    if (options.max != null && val > options.max) { val = options.max; $(this.el).val(options.max); }
+                    if(this.type!= 'float'){
+                        if (options.max != null && val > options.max) { val = options.max; $(this.el).val(options.max); }
+                    }else{//float
+                        if (options.max != null && parseFloat(val) > parseFloat(options.max)) { val = options.max; $(this.el).val(options.max); }
+                    }
+                    
                 }
-                if (val !== '' && w2utils.isFloat(val)) val = Number(val); else val = '';
+                if (val !== '' && w2utils.isFloat(val)){
+                    if(this.type!= 'float')
+                        val = Number(val);
+                } else{
+                    val = '';
+                } 
             }
             return val;
         },
