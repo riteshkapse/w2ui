@@ -4690,6 +4690,15 @@
             cell.replaceWith(this.getCellHTML(index, col_ind, isSummary));
         },
 
+        refreshCellByInd: function (recid, col_ind) {
+            var index     = this.get(recid, true);
+            var isSummary = (this.records[index] && this.records[index].recid == recid ? false : true);
+            var cell      = $(this.box).find((isSummary ? '.w2ui-grid-summary ' : '') + '#grid_'+ this.name + '_data_'+ index +'_'+ col_ind);
+            if (cell.length == 0) return false;
+            // set cell html and changed flag
+            cell.replaceWith(this.getCellHTML(index, col_ind, isSummary));
+        },
+
         refreshRow: function (recid, ind) {
             var tr1 = $(this.box).find('#grid_'+ this.name +'_frec_'+ w2utils.escapeId(recid));
             var tr2 = $(this.box).find('#grid_'+ this.name +'_rec_'+ w2utils.escapeId(recid));
